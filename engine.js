@@ -63,5 +63,5 @@ function solve(p){
  }
  return {ok:true,values,residuals,errors:[]};
 }
-const api={MODELS,ports,solve};if(typeof module!=='undefined')module.exports=api;else root.Engine=api;
+const api={MODELS,ports,solve};root.Engine=api;if(typeof module!=='undefined')module.exports=api;
 })(globalThis);

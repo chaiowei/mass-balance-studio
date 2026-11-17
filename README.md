@@ -2,6 +2,8 @@
 
 穩態、無反應、無循環的成分質量平衡編輯器（開發雛形）。圖面用 React Flow，計算核心是獨立的 `engine.js`。
 
+線上版：https://chaiowei.github.io/mass-balance-studio/（資料只存在各自的瀏覽器；換電腦請用「匯出 JSON／匯入 JSON」帶走專案）。
+
 ```bash
 npm install
 npm run dev      # http://127.0.0.1:4310
