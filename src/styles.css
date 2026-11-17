@@ -1,0 +1,118 @@
+:root { --teal:#147a76; --ink:#1d3a40; --line:#587c82; --bg:#f3f7f7; }
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body { font-family: "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif; color: var(--ink); background: var(--bg); font-size: 14px; }
+button { font: inherit; padding: 5px 10px; border: 1px solid #b9cccd; background: #fff; border-radius: 6px; cursor: pointer; color: var(--ink); }
+button:hover:not(:disabled) { background: #e6f1f1; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+input { font: inherit; }
+
+.app { display: grid; height: 100%; grid-template-columns: 190px 1fr 340px; grid-template-rows: 46px 1fr; }
+header { grid-column: 1 / 4; display: flex; gap: 8px; align-items: center; padding: 0 12px; background: #fff; border-bottom: 1px solid #d3e0e0; }
+header .sp { flex: 1; }
+.pname { font-weight: 700; font-size: 16px; border: 1px solid transparent; padding: 4px 8px; border-radius: 6px; width: 260px; }
+.pname:hover, .pname:focus { border-color: #b9cccd; }
+
+.palette, .results { background: #fff; padding: 10px; overflow-y: auto; }
+.palette { border-right: 1px solid #d3e0e0; display: flex; flex-direction: column; gap: 6px; }
+.results { border-left: 1px solid #d3e0e0; }
+h3 { margin: 10px 0 4px; font-size: 13px; color: #4b6b70; }
+.pitem { padding: 8px 10px; border: 1px solid #b9cccd; border-left-width: 5px; border-radius: 6px; background: #fbfdfd; cursor: grab; user-select: none; }
+.pitem:hover { background: #e6f1f1; }
+.crow { display: flex; gap: 4px; }
+.crow input { flex: 1; min-width: 0; padding: 4px 6px; border: 1px solid #b9cccd; border-radius: 6px; }
+.hint { font-size: 12px; color: #6b8589; margin: 4px 0; }
+.k-source { border-left-color: #2f9e6d !important; } .k-sink { border-left-color: #c0504d !important; }
+.k-mixer { border-left-color: #4a7fc1 !important; } .k-splitter { border-left-color: #8a63c7 !important; }
+.k-separator { border-left-color: #e59422 !important; } .k-collector { border-left-color: #c2a21e !important; }
+
+main { position: relative; min-width: 0; }
+.react-flow { background: #fafcfc; }
+.equip { width: 180px; min-height: 84px; background: #fff; border: 1px solid #9db8ba; border-left-width: 6px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.08); padding: 6px 10px 8px; font-size: 12px; }
+.equip.sel { box-shadow: 0 0 0 2px var(--teal); }
+.equip.bad { border-color: #d9534f; border-left-color: #d9534f; }
+.equip .head { display: flex; flex-direction: column; margin-bottom: 4px; }
+.equip .tag { font-weight: 700; font-size: 14px; border: 1px solid transparent; border-radius: 4px; padding: 1px 4px; margin-left: -4px; color: var(--ink); background: transparent; }
+.equip .tag:hover, .equip .tag:focus { border-color: #b9cccd; background: #fff; }
+.equip small { color: #6b8589; }
+.equip .pf { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+.equip .pf span { flex: 1; color: #4b6b70; }
+.equip .pf input { width: 64px; padding: 2px 4px; border: 1px solid #b9cccd; border-radius: 4px; text-align: right; }
+.equip .pf input.empty { border-color: #d9534f; background: #fff3f2; }
+.equip .hint { margin: 2px 0 0; }
+.react-flow__handle { width: 12px; height: 12px; background: var(--teal); border: 2px solid #fff; }
+.react-flow__handle.connectingfrom, .react-flow__handle.connectingto { background: #e59422; }
+.react-flow__handle:hover { transform: translate(var(--tx, 0), -50%) scale(1.25); }
+.plabel { position: absolute; bottom: 5px; font-size: 10px; line-height: 1; color: #4b6b70; pointer-events: none; white-space: nowrap; }
+.plabel.l { right: 16px; } .plabel.r { left: 16px; }
+.react-flow__edge-path { stroke: var(--line); stroke-width: 2; }
+.react-flow__edge.selected .react-flow__edge-path, .edge-sel { stroke: var(--teal); stroke-width: 3; }
+.elabel { position: absolute; pointer-events: all; cursor: grab; touch-action: none; user-select: none; background: rgba(255,255,255,.92); border: 1px solid #b9cccd; border-radius: 10px; padding: 1px 7px; font-size: 11px; color: #24464d; white-space: nowrap; }
+.ehandle { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: var(--teal); border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.25); opacity: .85; cursor: grab; pointer-events: all; touch-action: none; }
+.ehandle:hover, .ehandle.on { opacity: 1; }
+.ehandle:active { cursor: grabbing; }
+.elabel.none { opacity: .7; }
+.notice { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: #24464d; color: #fff; padding: 6px 14px; border-radius: 16px; cursor: pointer; z-index: 5; }
+
+.ok { color: #1c7a4a; font-weight: 600; }
+.err { color: #b3261e; background: #fdeceb; border-radius: 6px; padding: 8px; line-height: 1.6; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th, td { padding: 3px 4px; text-align: left; }
+td:nth-child(3), td:nth-child(4), th:nth-child(3), th:nth-child(4) { text-align: right; }
+tr.first td { border-top: 1px solid #d3e0e0; }
+thead th { border-bottom: 1px solid #b9cccd; }
+
+@media (max-width: 700px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: 46px 110px minmax(320px, 1fr) 220px; }
+  header { grid-column: 1; overflow-x: auto; }
+  .palette { flex-direction: row; flex-wrap: wrap; overflow-y: auto; border-right: 0; border-bottom: 1px solid #d3e0e0; }
+  .palette h3 { width: 100%; margin: 2px 0; }
+  .results { border-left: 0; border-top: 1px solid #d3e0e0; }
+}
+
+/* 多出口分配器 */
+.k-multi { border-left-color: #2a9d8f !important; }
+.equip.multi { width: auto; min-width: 270px; }
+.mrow { display: grid; align-items: center; gap: 4px; margin-top: 3px; position: relative; }
+.mrow input { min-width: 0; width: 100%; padding: 2px 4px; border: 1px solid #b9cccd; border-radius: 4px; font-size: 12px; }
+.mrow input:not(:first-child) { text-align: right; }
+.mrow input.empty { border-color: #d9534f; background: #fff3f2; }
+.mrow input:disabled { background: #eef1f1; color: #8a9a9c; border-style: dashed; }
+.mrow .r { text-align: right; }
+.mhead { color: #6b8589; font-size: 11px; }
+.mrow .x { padding: 0; width: 20px; height: 20px; line-height: 1; font-size: 11px; }
+.mrow .mini { padding: 1px 4px; font-size: 11px; white-space: nowrap; }
+.msum { border-top: 1px solid #d3e0e0; padding-top: 3px; font-weight: 600; }
+.okc { color: #1c7a4a; } .badc { color: #b3261e; }
+.equip.multi .mrow .react-flow__handle { right: -18px; }
+
+.k-reactor { border-left-color: #b5651d !important; }
+.mrow select { min-width: 0; width: 100%; padding: 2px 2px; border: 1px solid #b9cccd; border-radius: 4px; font-size: 12px; background: #fff; }
+.mrow select.empty { border-color: #d9534f; background: #fff3f2; }
+
+.equip.k-reactor { width: 340px; }
+.equip.multi .hint { white-space: normal; }
+
+/* 左右側欄可收合 */
+.palette { grid-column: 1; grid-row: 2; } main { grid-column: 2; grid-row: 2; } .results { grid-column: 3; grid-row: 2; }
+.app.noleft { grid-template-columns: 0 1fr 340px; } .app.noleft .palette { display: none; }
+.app.noright { grid-template-columns: 190px 1fr 0; } .app.noright .results { display: none; }
+.app.noleft.noright { grid-template-columns: 0 1fr 0; }
+.pane-toggle { position: absolute; top: 10px; z-index: 6; padding: 4px 8px; font-size: 12px; background: rgba(255,255,255,.95); }
+.pane-toggle.left { left: 10px; } .pane-toggle.right { right: 10px; }
+@media (max-width: 700px) {
+  .palette, main, .results { grid-column: 1; grid-row: auto; }
+  .app.noleft, .app.noright, .app.noleft.noright { grid-template-columns: 1fr; }
+  .app.noleft { grid-template-rows: 46px minmax(320px, 1fr) 220px; } .app.noright { grid-template-rows: 46px 110px 1fr; }
+  .app.noleft.noright { grid-template-rows: 46px 1fr; }
+}
+
+.ecolors { position: absolute; display: flex; gap: 4px; align-items: center; padding: 4px 6px; background: #fff; border: 1px solid #b9cccd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.15); pointer-events: all; z-index: 5; }
+.ecolors .sw { width: 18px; height: 18px; padding: 0; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #9db8ba; }
+.ecolors .sw.cur { box-shadow: 0 0 0 2px #24464d; }
+.ecolors input[type=color] { width: 24px; height: 22px; padding: 0; border: 0; background: none; }
+.ecolors .swr { padding: 1px 6px; font-size: 11px; }
+
+/* 上／下邊中心接點 */
+.react-flow__handle.hx { width: 10px; height: 10px; opacity: .55; }
+.react-flow__handle.hx:hover, .react-flow__handle.hx.connectingfrom, .react-flow__handle.hx.connectingto { opacity: 1; }
