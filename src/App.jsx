@@ -224,37 +224,90 @@ function route(sx, sy, tx, ty, d, bounds, k) {
 }
 
 const DIR = { right: [1, 0], left: [-1, 0], top: [0, -1], bottom: [0, 1] };
-/** 從上／下邊接點進出的走線：先垂直（或水平）離開一小段，再用直角線連到目標前的一小段。 */
-function routeSides(sx, sy, tx, ty, d, sp, tp) {
+const dedupe = pts => pts.filter((p, i, a) => i === 0 || p.x !== a[i - 1].x || p.y !== a[i - 1].y);
+/** 水平／垂直線段是否穿過方塊（四周外擴 m）。 */
+function segHitsBox(a, b, box, m = 6) {
+  const l = box.x - m, r = box.x + box.w + m, t = box.y - m, bt = box.y + box.h + m;
+  if (a.y === b.y) return a.y > t && a.y < bt && Math.max(a.x, b.x) > l && Math.min(a.x, b.x) < r;
+  if (a.x === b.x) return a.x > l && a.x < r && Math.max(a.y, b.y) > t && Math.min(a.y, b.y) < bt;
+  return false;
+}
+/** 在兩個接點的外側小段（S2、T2）之間找「不穿過來源／目標方塊、轉彎少、距離短」的直角走線。 */
+function searchRoute(S2, T2, ds, dt, boxes) {
+  const m = 24;
+  const xs = new Set([S2.x, T2.x, (S2.x + T2.x) / 2]), ys = new Set([S2.y, T2.y, (S2.y + T2.y) / 2]);
+  for (const b of boxes) { xs.add(b.x - m); xs.add(b.x + b.w + m); ys.add(b.y - m); ys.add(b.y + b.h + m); }
+  const X = [...xs], Y = [...ys];
+  const cands = [[], [{ x: T2.x, y: S2.y }], [{ x: S2.x, y: T2.y }]];
+  for (const c of X) cands.push([{ x: c, y: S2.y }, { x: c, y: T2.y }]);
+  for (const c of Y) cands.push([{ x: S2.x, y: c }, { x: T2.x, y: c }]);
+  for (const x of X) for (const y of Y) {
+    cands.push([{ x: S2.x, y }, { x, y }, { x, y: T2.y }]);
+    cands.push([{ x, y: S2.y }, { x, y }, { x: T2.x, y }]);
+  }
+  const dir = (a, b) => [Math.sign(b.x - a.x), Math.sign(b.y - a.y)];
+  const dot = (u, v) => u[0] * v[0] + u[1] * v[1];
+  let best = null, bestScore = Infinity;
+  for (const c of cands) {
+    const pts = dedupe([S2, ...c, T2]);
+    let ok = true, len = 0;
+    const dirs = [];
+    for (let i = 1; i < pts.length && ok; i++) {
+      const a = pts[i - 1], b = pts[i];
+      if (a.x !== b.x && a.y !== b.y) { ok = false; break; }
+      if (boxes.some(bx => segHitsBox(a, b, bx))) { ok = false; break; }
+      dirs.push(dir(a, b)); len += Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+    }
+    if (!ok) continue;
+    if (dirs.length) {
+      if (dot(dirs[0], ds) < 0) continue;                       // 不可一出去就掉頭撞回來源
+      if (dot(dirs[dirs.length - 1], [-dt[0], -dt[1]]) < 0) continue; // 不可從反方向進入目標
+      if (dirs.some((d, i) => i && dot(d, dirs[i - 1]) < 0)) continue; // 不可原地折返
+    }
+    const score = len + 30 * Math.max(0, pts.length - 2);
+    if (score < bestScore) { bestScore = score; best = pts; }
+  }
+  return best;
+}
+/** 從上／下邊接點進出的走線：先離開方塊一小段，再直角連線；預設會繞開來源與目標方塊。 */
+function routeSides(sx, sy, tx, ty, d, sp, tp, boxes) {
   const L = 24, ds = DIR[sp], dt = DIR[tp];
   const S = { x: sx, y: sy }, T = { x: tx, y: ty };
   const S2 = { x: sx + ds[0] * L, y: sy + ds[1] * L }, T2 = { x: tx + dt[0] * L, y: ty + dt[1] * L };
   const a1 = ds[0] !== 0 ? 'x' : 'y', a2 = dt[0] !== 0 ? 'x' : 'y';
-  let mid, handle = null, kind = 'none';
-  if (a1 === 'y' && a2 === 'y') {
-    const my = d?.cy ?? (ds[1] === dt[1] ? (ds[1] < 0 ? Math.min(S2.y, T2.y) : Math.max(S2.y, T2.y)) : (S2.y + T2.y) / 2);
-    mid = [{ x: S2.x, y: my }, { x: T2.x, y: my }];
-    kind = 'y'; handle = { x: (S2.x + T2.x) / 2, y: my };
-  } else if (a1 === 'x' && a2 === 'x') {
-    const cx = d?.cx ?? (S2.x + T2.x) / 2;
-    mid = [{ x: cx, y: S2.y }, { x: cx, y: T2.y }];
-  } else if (a1 === 'x') mid = [{ x: T2.x, y: S2.y }];
-  else mid = [{ x: S2.x, y: T2.y }];
-  const pts = [S, S2, ...mid, T2, T].filter((p, i, a) => i === 0 || p.x !== a[i - 1].x || p.y !== a[i - 1].y);
+  let inner = null;
+  if (a1 === 'y' && a2 === 'y' && d?.cy !== undefined) {
+    // 使用者拖過水平段：照他指定的高度走
+    inner = dedupe([S2, { x: S2.x, y: d.cy }, { x: T2.x, y: d.cy }, T2]);
+  } else if (boxes?.length) {
+    inner = searchRoute(S2, T2, ds, dt, boxes);
+  }
+  if (!inner) {
+    let mid;
+    if (a1 === 'y' && a2 === 'y') { const my = ds[1] === dt[1] ? (ds[1] < 0 ? Math.min(S2.y, T2.y) : Math.max(S2.y, T2.y)) : (S2.y + T2.y) / 2; mid = [{ x: S2.x, y: my }, { x: T2.x, y: my }]; }
+    else if (a1 === 'x' && a2 === 'x') { const cx = (S2.x + T2.x) / 2; mid = [{ x: cx, y: S2.y }, { x: cx, y: T2.y }]; }
+    else if (a1 === 'x') mid = [{ x: T2.x, y: S2.y }];
+    else mid = [{ x: S2.x, y: T2.y }];
+    inner = dedupe([S2, ...mid, T2]);
+  }
+  const pts = dedupe([S, ...inner, T]);
   // 標籤放在最長的一段旁邊：水平段在上方、垂直段在右側
-  let best = 0, bi = 0;
+  let best = 0, bi = 1;
   for (let i = 1; i < pts.length; i++) { const l = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); if (l > best) { best = l; bi = i; } }
   const a = pts[bi - 1] ?? pts[0], b = pts[bi] ?? pts[0];
   const horiz = Math.abs(b.y - a.y) < Math.abs(b.x - a.x), mx = (a.x + b.x) / 2, my2 = (a.y + b.y) / 2;
-  return { back: false, vertical: false, kind, pts, handle, label: horiz ? { x: mx, y: my2 - 6, mode: 'above' } : { x: mx + 10, y: my2, mode: 'right' } };
+  // 只有垂直對垂直的組合可以拖水平段調高度
+  const kind = a1 === 'y' && a2 === 'y' && horiz ? 'y' : 'none';
+  return { back: false, vertical: false, kind, pts, handle: kind === 'y' ? { x: mx, y: my2 } : null, label: horiz ? { x: mx, y: my2 - 6, mode: 'above' } : { x: mx + 10, y: my2, mode: 'right' } };
 }
 
 const EDGE_COLORS = ['#587c82', '#c0392b', '#2a6fdb', '#2a9d4a', '#e59422', '#8a63c7', '#222222', '#9aa5a8'];
-function FlowEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, markerEnd, selected }) {
+function FlowEdge({ id, source, target, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, markerEnd, selected }) {
   const { values, components, streamNames, setEdgeData, setEdgeColor, snapshot, bounds } = useContext(Ctx);
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, getInternalNode } = useReactFlow();
+  const boxOf = nid => { const n = getInternalNode(nid); return n?.measured?.width ? { x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, w: n.measured.width, h: n.measured.height } : null; };
   const drag = useRef(null);
-  const r = (sourcePosition === 'right' && targetPosition === 'left') ? route(sourceX, sourceY, targetX, targetY, data, bounds, (parseInt(id.replace(/\D/g, ''), 10) || 0) % 4) : routeSides(sourceX, sourceY, targetX, targetY, data, sourcePosition, targetPosition);
+  const r = (sourcePosition === 'right' && targetPosition === 'left') ? route(sourceX, sourceY, targetX, targetY, data, bounds, (parseInt(id.replace(/\D/g, ''), 10) || 0) % 4) : routeSides(sourceX, sourceY, targetX, targetY, data, sourcePosition, targetPosition, [source, target].map(boxOf).filter(Boolean));
   const v = values?.[id];
   const total = v ? components.reduce((s, c) => s + (v[c.id] ?? 0), 0) : null;
   const tip = v ? components.map(c => `${c.name}：${fmt(v[c.id])} kg/h（${total === 0 ? '—' : fmt((v[c.id] / total) * 100) + '%'}）`).join('\n') : '';
